@@ -1,0 +1,36 @@
+{
+  "name": "portus-interact",
+  "version": "1.0.0",
+  "description": "Interact with portusonline.net",
+  "main": "PortusInteract.js",
+  "scripts": {
+    "test": "sh scripts/test.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nigelsdtech/portus-interact.git"
+  },
+  "keywords": [
+    "trigger",
+    "fired",
+    "email",
+    "notification"
+  ],
+  "author": "Nigel Stephen D'Souza",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nigelsdtech/portus-interact/issues"
+  },
+  "homepage": "https://github.com/nigelsdtech/portus-interact#readme",
+  "dependencies": {
+    "log4js": "^0.6.x"
+  },
+  "devDependencies": {
+    "chai": "3.5.0",
+    "mocha": "2.5.1"
+  },
+  "config": {
+    "appName": "portus-interact",
+    "googleAuthScopes": "https://www.googleapis.com/auth/gmail.modify"
+  }
+}
