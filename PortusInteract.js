@@ -209,7 +209,17 @@ method.downloadLatestPayslip = function(params, callback) {
 
     var payslip = payslips[0]
 
-    var downloadedFileLocation = '/tmp/'+ dateFormat('yyyy-MM-dd', new Date(payslip.Created)) + '-OpenBet.pdf';
+    var suffix;
+
+    switch (payslip.DocumentType) {
+      case 'Payslip Main' :
+        suffix = 'OpenBet';
+        break;
+      default :
+        suffix = payslip.DocumentType;
+    }
+
+    var downloadedFileLocation = '/tmp/'+ dateFormat('yyyy-MM-dd', new Date(payslip.Created)) + '-' + suffix + '.pdf';
 
     self._payslip4uRequest
       .get({
