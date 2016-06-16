@@ -1,7 +1,9 @@
 'use strict';
 
-var cheerio = require('cheerio'),
-    request = require('request');
+var cheerio    = require('cheerio'),
+    dateFormat = require('date-format'),
+    fs         = require('fs'),
+    request    = require('request');
 
 
 /**
@@ -11,12 +13,17 @@ var cheerio = require('cheerio'),
 
 // Some object variables
 var
+    _payslip4uRequest,
     _portusPassword,
     _portusRequest,
     _portusUsername;
 
 // Some default configs
 var _cfg = {
+  payslip4u: {
+    baseUrl: 'https://www.payslip4u.co.uk/',
+    loggedInCookieName : 'XSRF-TOKEN'
+  },
   portus : {
     baseUrl: 'https://portusonline.net/OpenBenefits/',
     forever: true,
@@ -30,12 +37,11 @@ var _cfg = {
     payslip4uUri: 'readdata/samlresponse.aspx?n=Payslip4U',
     payslip4uLoginForm: {
       formName : 'SSOLogin'
-    },
-    reqTimeout: (1000*10)
-  }
+    }
+  },
+  reqTimeout: (1000*10),
+  userAgent: 'Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.23 Mobile Safari/537.36'
 }
-
-//loggedInCookieName : '.OpenBenefits$Preferences',
 
 
 /**
@@ -55,12 +61,22 @@ function PortusInteract(params) {
   // Setup the request defaults
   this._portusRequest = request.defaults({
     baseUrl            : this._cfg.portus.baseUrl,
-    timeout            : this._cfg.portus.reqTimeout,
+    timeout            : this._cfg.reqTimeout,
     followAllRedirects : true,
     jar                : true,
     headers: {
       'Upgrade-Insecure-Requests' : '1',
-      'User-Agent'                : 'Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.23 Mobile Safari/537.36'
+      'User-Agent'                : this._cfg.userAgent
+    }
+  });
+
+  this._payslip4uRequest = request.defaults({
+    baseUrl            : this._cfg.payslip4u.baseUrl,
+    timeout            : this._cfg.reqTimeout,
+    followAllRedirects : true,
+    jar                : true,
+    headers: {
+      'User-Agent'     : this._cfg.userAgent
     }
   });
 
@@ -68,6 +84,54 @@ function PortusInteract(params) {
 
 
 var method = PortusInteract.prototype;
+
+/**
+ * portusInteract.doPayslip4uLogin
+ *
+ * @desc Log in to the portus site
+ *
+ * @alias portusInteract.doPayslip4uLogin
+ * @memberOf! portusInteract(v1)
+ *
+ * @param  {object=} params - Parameters for request (currently unused)
+ * @param  {callback} callback - The callback that handles the response. Returns callback(error,isLoggedIn)
+ * @return {boolean} isLoggedIn - Indicates a successful login
+ */
+method.doPayslip4uLogin = function(params, callback) {
+
+  var self = this
+
+  // Go to the login site
+  self._getPayslip4uLoginForm(null, function (err, form) {
+
+    if (err) { callback(err); return null }
+
+    var formInputs = form.inputs;
+
+    self._payslip4uRequest.post({
+      uri: 'Employee/saml/OpenBet',
+      form: formInputs
+    }, function (err, resp, body) {
+
+      if (err) { callback(err); return null }
+
+      var cookies = resp.request.headers.cookie.split(';')
+
+      for (var i = 0 ; i < cookies.length ; i ++ ) {
+        var cookie = cookies[i].trim()
+	var cookieName = cookie.split('=')[0]
+
+        // We know we're logged in if we have this cookie
+        if (cookieName == self._cfg.payslip4u.loggedInCookieName) {
+          callback(null, true)
+          return null
+        }
+      }
+
+      callback(null, false)
+    });
+  });
+}
 
 
 /**
@@ -120,66 +184,108 @@ method.doPortusLogin = function(params, callback) {
   })
 }
 
+
 /**
- * portusInteract.getPayslipsList
+ * portusInteract.downloadLatestPayslip
  *
- * @desc Get the list of available payslips
+ * @desc Downloads the latest available payslip (or other document)
  *
- * @alias portusInteract.getPayslipsList
+ * @alias portusInteract.downloadLatestPayslip
  * @memberOf! portusInteract(v1)
  *
  * @param  {object=} params - Parameters for request (currently unused)
- * @param  {callback} callback - The callback that handles the response. Returns callback(error,payslipLinks)
- * @return {string[]} payslipLinks - Links to all returned payslips
+ * @param  {callback} callback - The callback that handles the response. Returns callback(error,downloadedFileLocation)
+ * @return {string} downloadedFileLocation - Location of the file on the local system
  */
-method.getPayslipsList = function(params, callback) {
+method.downloadLatestPayslip = function(params, callback) {
 
   var self = this
 
   // Go to the login site
-  self._getPayslipsLoginForm(null, function (err, form) {
+  self.listPayslips(null, function (err, payslips) {
+
+    if (err) { callback(err); return null }
+    if (payslips.length == 0) { callback('portusInteract.downloadLatestPayslip: no payslip available'); return null }
+
+    var payslip = payslips[0]
+
+    var downloadedFileLocation = '/tmp/'+ dateFormat('yyyy-MM-dd', new Date(payslip.Created)) + '-OpenBet.pdf';
+
+    self._payslip4uRequest
+      .get({
+        uri: 'api/Document/'+payslip.ID,
+        headers: {
+          'Accept' : 'application-pdf'
+        }
+      })
+      .on('response', function (resp) {
+        if (resp.headers['content-type'] != 'application/pdf') {
+          callback('portusInteract.downloadLatestPayslip: unrecognized download content - ' + resp.headers['content-type']);
+          return null;
+	}
+      })
+      .pipe(
+        fs.createWriteStream(downloadedFileLocation)
+	  .on('close', function () {
+            callback(null,downloadedFileLocation);
+          })
+      )
+      .on('error', function (err) { callback(err); return null } )
+  });
+}
+
+
+/**
+ * portusInteract.listPayslips
+ *
+ * @desc Get the list of available payslips
+ *
+ * @alias portusInteract.listPayslips
+ * @memberOf! portusInteract(v1)
+ *
+ * @param  {object=} params - Parameters for request (currently unused)
+ * @param  {callback} callback - The callback that handles the response. Returns callback(error,payslips[])
+ * @return {object} payslips - JSON object of Payslips as returned by Payslips4U
+ */
+method.listPayslips = function(params, callback) {
+
+  var self = this
+
+  // Go to the login site
+  self.doPayslip4uLogin(null, function (err, form) {
 
     if (err) { callback(err); return null }
 
+    var formInputs = form.inputs;
 
-    /*
-    var $ = cheerio.load(body)
-    var f = $('#'+self._cfg.portus.loginForm.formName)
+    self._payslip4uRequest.get({
+      uri: 'api/EmployeePortal',
+      json: true
+    }, function (err, resp, body) {
 
-    var form = {};
+      if (err) { callback(err); return null }
 
-    // Get all the form attributes
-    var attribs = f.attr()
-    form['attribs'] = attribs
+      var payslips = resp.body.Documents;
+      if (payslips === undefined) { callback('portusInteract.listPayslips: Could not retrieve payslips\n ' + resp); return null }
 
-
-    // Get all the form inputs
-    var inputs = f.find('input');
-    form['inputs'] = {}
-    for (var i = 0; i < inputs.length; i++) {
-      form['inputs'][inputs.get(i).attribs.name] = inputs.get(i).attribs.value
-    }
-    */
-
-    callback(null, [])
-
-
-  })
+      callback(null, payslips)
+    });
+  });
 }
 
 /**
- * portusInteract._getPayslipsLoginForm
+ * portusInteract._getPayslip4uLoginForm
  *
  * @desc Get form fields for logging in to the portus site
  *
- * @alias portusInteract._getPayslipsLoginForm
+ * @alias portusInteract._getPayslip4uLoginForm
  * @memberOf! portusInteract(v1)
  *
  * @param  {object=} params - Parameters for request (currently unused)
  * @param  {callback} callback - The callback that handles the response. Returns callback(error,form)
  * @return {object=} form - The form needing to be submitted
  */
-method._getPayslipsLoginForm = function(params, callback) {
+method._getPayslip4uLoginForm = function(params, callback) {
 
   var self = this
 

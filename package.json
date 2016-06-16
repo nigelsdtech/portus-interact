@@ -26,11 +26,12 @@
     "log4js": "^0.6.x"
   },
   "devDependencies": {
-    "chai": "3.5.0",
-    "mocha": "2.5.1"
+    "chai": "^3.5.0",
+    "mocha": "^2.5.1",
+    "cfg": "^0.0.2"
   },
   "config": {
     "appName": "portus-interact",
-    "googleAuthScopes": "https://www.googleapis.com/auth/gmail.modify"
+    "googleAuthScopes": ""
   }
 }
