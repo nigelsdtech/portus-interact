@@ -8,7 +8,45 @@ var cfg            = require('config'),
 
 
 
-describe('Service logging in to portus', function () {
+describe('Service logging in to Portus with bad credentials', function () {
+
+  this.timeout(1000*10);
+
+  var x;
+
+  before(function (done) {
+
+    x = new PortusInteract({
+      username: 'badUser',
+      password: 'badPassword'
+    });
+
+    done();
+
+  });
+
+  it('should not log in to Portus', function (done) {
+
+    x.doPortusLogin(null, function(err,isLoggedIn) {
+      should.not.exist(err);
+      isLoggedIn.should.equal(false);
+      done();
+    });
+  });
+
+  it('should not get the Payslip4u login form', function (done) {
+
+      x._getPayslip4uLoginForm(null, function(err,form) {
+          should.exist(err);
+          done();
+      });
+  });
+
+
+})
+
+
+describe('Service logging in to Portus with good credentials', function () {
 
   this.timeout(1000*10);
 
@@ -23,34 +61,12 @@ describe('Service logging in to portus', function () {
       password: cfg.portus.password
     });
 
-    x = new PortusInteract({
-      username: 'badUser',
-      password: 'badPassword'
-    });
-
     done();
 
   });
 
-  it('should submit the login with bad credentials and not get a successful login', function (done) {
 
-    x.doPortusLogin(null, function(err,isLoggedIn) {
-      should.not.exist(err);
-      isLoggedIn.should.equal(false);
-      done();
-    });
-  });
-
-  it('should not get the Payslip4U login form when the login details are bad', function (done) {
-
-      x._getPayslip4uLoginForm(null, function(err,form) {
-          should.exist(err);
-          done();
-      });
-  });
-
-
-  it('should get all the required login form fields', function (done) {
+  it('should get the Portus login form fields', function (done) {
 
       p._getPortusLoginForm(null, function(err,form) {
           should.not.exist(err);
@@ -72,7 +88,7 @@ describe('Service logging in to portus', function () {
       });
   });
 
-  it('should submit the login form and get a successful login', function (done) {
+  it('should log in to Portus', function (done) {
 
     p.doPortusLogin(null, function(err,isSuccessful) {
       should.not.exist(err);
@@ -81,7 +97,7 @@ describe('Service logging in to portus', function () {
     });
   });
 
-  it('should get all the required Payslip4U login form fields', function (done) {
+  it('should get the Payslip4U login form fields', function (done) {
 
       p._getPayslip4uLoginForm(null, function(err,form) {
           should.not.exist(err);
