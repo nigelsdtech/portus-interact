@@ -7,10 +7,12 @@ var cfg            = require('config'),
     should         = chai.should()
 
 
+var timeout = (1000*30)
+
 
 describe('Service logging in to Portus with bad credentials', function () {
 
-  this.timeout(1000*10);
+  this.timeout(timeout);
 
   var x;
 
@@ -48,7 +50,7 @@ describe('Service logging in to Portus with bad credentials', function () {
 
 describe('Service logging in to Portus with good credentials', function () {
 
-  this.timeout(1000*10);
+  this.timeout(timeout);
 
   var p,x;
 
@@ -143,12 +145,13 @@ describe('Service logging in to Portus with good credentials', function () {
 
       if (err) { throw err }
 
-      if (stats.isFile()) {
+      if (!stats.isFile()) {
 
         fs.unlink(downloadedPayslipLocation, function() {
           done();
         })
       }
+          done();
     })
   })
 });
