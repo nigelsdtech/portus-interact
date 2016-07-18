@@ -22,9 +22,8 @@
   },
   "homepage": "https://github.com/nigelsdtech/portus-interact#readme",
   "dependencies": {
-    "log4js": "^0.6.x",
-    "date-format": "~0.0.2",
     "cheerio": "^0.20.0",
+    "date-format": "~0.0.2",
     "request": "^2.70.0"
   },
   "devDependencies": {
