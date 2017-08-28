@@ -54,7 +54,7 @@ describe('Service logging in to Portus with good credentials', function () {
 
   var p,x;
 
-  var downloadedPayslipLocation;
+  var downloadedPayslipLocation = '/tmp/.';
 
   before(function (done) {
 

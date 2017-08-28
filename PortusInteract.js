@@ -219,7 +219,7 @@ method.downloadLatestPayslip = function(params, callback) {
         suffix = payslip.DocumentType;
     }
 
-    var downloadedFileLocation = '/tmp/'+ dateFormat('yyyy-MM-dd', new Date(payslip.Created)) + '-' + suffix + '.pdf';
+    var downloadedFileLocation = '/tmp/'+ dateFormat('yyyy-MM-dd', new Date(payslip.DocumentDate)) + '-' + suffix + '.pdf';
 
     self._payslip4uRequest
       .get({
